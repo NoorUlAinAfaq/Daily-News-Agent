@@ -289,23 +289,34 @@ def upload_to_google_drive(file_path: str, sa_json_str: str, folder_name: str = 
     )
     service = build("drive", "v3", credentials=creds)
 
-    # Check if folder exists
-    query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-    res = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-    folders = res.get('files', [])
+    folder_id = os.environ.get("GDRIVE_FOLDER_ID")
+    
+    if not folder_id:
+        # Search for folder in accessible files/shared folders
+        query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+        res = service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)',
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
+        ).execute()
+        folders = res.get('files', [])
+        if folders:
+            folder_id = folders[0]['id']
+        else:
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+            folder = service.files().create(
+                body=folder_metadata,
+                fields='id',
+                supportsAllDrives=True
+            ).execute()
+            folder_id = folder.get('id')
 
-    if folders:
-        folder_id = folders[0]['id']
-    else:
-        # Create folder
-        folder_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder'
-        }
-        folder = service.files().create(body=folder_metadata, fields='id').execute()
-        folder_id = folder.get('id')
-
-    # Upload file
+    # Upload file directly into the shared folder
     file_name = os.path.basename(file_path)
     file_metadata = {
         'name': file_name,
@@ -319,7 +330,8 @@ def upload_to_google_drive(file_path: str, sa_json_str: str, folder_name: str = 
     uploaded = service.files().create(
         body=file_metadata,
         media_body=media,
-        fields='id, webViewLink'
+        fields='id, webViewLink',
+        supportsAllDrives=True
     ).execute()
 
     return uploaded.get('webViewLink', f"https://drive.google.com/file/d/{uploaded.get('id')}/view")
