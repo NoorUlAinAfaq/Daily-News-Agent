@@ -1,0 +1,14 @@
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Service account & keys
+service_account.json
+credentials.json
+*.pem
+
+# Output docs
+*.docx
