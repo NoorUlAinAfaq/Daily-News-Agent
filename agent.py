@@ -314,7 +314,9 @@ def upload_to_google_drive(file_path: str, sa_json_str: str, folder_name: str = 
                 fields='id',
                 supportsAllDrives=True
             ).execute()
-            folder_id = folder.get('id')
+    print(f"[*] Uploading to Google Drive target folder ID: {folder_id}")
+    if not folder_id:
+        raise ValueError("Could not find or resolve Google Drive folder. Please ensure GDRIVE_FOLDER_ID secret is set!")
 
     # Upload file directly into the shared folder
     file_name = os.path.basename(file_path)
