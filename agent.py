@@ -103,13 +103,30 @@ Collected Articles Raw List:
 {json.dumps(articles[:40], indent=2)}
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-    )
+    candidate_models = ["gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    response = None
+    import time
+    for mod in candidate_models:
+        for attempt in range(3):
+            try:
+                print(f"[*] Trying model {mod} (attempt {attempt+1})...")
+                response = client.models.generate_content(
+                    model=mod,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                if response and response.text:
+                    break
+            except Exception as err:
+                print(f"[!] Error with {mod}: {err}")
+                time.sleep(4)
+        if response and response.text:
+            break
+
+    if not response or not response.text:
+        raise RuntimeError("Failed to generate content from Gemini API across fallback models.")
     
     return json.loads(response.text)
 
