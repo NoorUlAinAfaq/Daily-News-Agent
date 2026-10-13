@@ -103,11 +103,24 @@ Collected Articles Raw List:
 {json.dumps(articles[:40], indent=2)}
 """
 
-    candidate_models = ["gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     response = None
     import time
-    for mod in candidate_models:
-        for attempt in range(3):
+
+    # Query available models or use prioritized list
+    available_models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3.8-flash", "gemini-flash", "gemini-pro"]
+    try:
+        remote_models = [m.name.replace("models/", "") for m in client.models.list() if "generateContent" in (getattr(m, "supported_generation_methods", []) or getattr(m, "supported_actions", []))]
+        if remote_models:
+            # prioritize flash models first
+            flash_models = [m for m in remote_models if "flash" in m]
+            other_models = [m for m in remote_models if "flash" not in m]
+            available_models = flash_models + other_models
+            print(f"[*] Available remote models: {available_models[:6]}")
+    except Exception as e:
+        print(f"[*] Could not query model list dynamically ({e}), using default candidates.")
+
+    for mod in available_models:
+        for attempt in range(4):
             try:
                 print(f"[*] Trying model {mod} (attempt {attempt+1})...")
                 response = client.models.generate_content(
@@ -118,10 +131,18 @@ Collected Articles Raw List:
                     )
                 )
                 if response and response.text:
+                    print(f"[+] Successfully generated content using {mod}!")
                     break
             except Exception as err:
-                print(f"[!] Error with {mod}: {err}")
-                time.sleep(4)
+                err_str = str(err)
+                print(f"[!] Error with {mod}: {err_str[:120]}...")
+                if "404" in err_str:
+                    # Model doesn't exist, skip immediately to next model
+                    break
+                # If 503 high demand or 429, wait with exponential backoff
+                wait_time = (attempt + 1) * 6
+                print(f"    Waiting {wait_time}s before retry...")
+                time.sleep(wait_time)
         if response and response.text:
             break
 
