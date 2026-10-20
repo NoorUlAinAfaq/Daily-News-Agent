@@ -280,26 +280,46 @@ def create_docx_report(data: Dict[str, Any], output_path: str):
     doc.save(output_path)
     return output_path
 
-def upload_to_google_drive(file_path: str, sa_json_str: str, folder_name: str = "Daily News") -> str:
-    """Uploads file to Google Drive using a Service Account and returns the shareable web link."""
-    sa_info = json.loads(sa_json_str)
-    creds = service_account.Credentials.from_service_account_info(
-        sa_info,
-        scopes=["https://www.googleapis.com/auth/drive"]
-    )
+def upload_to_google_drive(file_path: str, folder_name: str = "Daily News") -> str:
+    """Uploads file to Google Drive using personal OAuth2 Refresh Token (or Service Account fallback)."""
+    refresh_token = os.environ.get("GDRIVE_REFRESH_TOKEN")
+    client_id = os.environ.get("GDRIVE_CLIENT_ID")
+    client_secret = os.environ.get("GDRIVE_CLIENT_SECRET")
+    sa_json_str = os.environ.get("GDRIVE_SERVICE_ACCOUNT_JSON")
+
+    if refresh_token and client_id and client_secret:
+        print("[*] Authenticating to Google Drive via User OAuth2 Refresh Token...")
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        creds = Credentials(
+            None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=["https://www.googleapis.com/auth/drive"]
+        )
+        creds.refresh(Request())
+    elif sa_json_str:
+        print("[*] Authenticating to Google Drive via Service Account...")
+        sa_info = json.loads(sa_json_str)
+        creds = service_account.Credentials.from_service_account_info(
+            sa_info,
+            scopes=["https://www.googleapis.com/auth/drive"]
+        )
+    else:
+        raise ValueError("Missing Google Drive credentials! Provide GDRIVE_REFRESH_TOKEN, GDRIVE_CLIENT_ID, and GDRIVE_CLIENT_SECRET.")
+
     service = build("drive", "v3", credentials=creds)
 
     folder_id = os.environ.get("GDRIVE_FOLDER_ID")
     
     if not folder_id:
-        # Search for folder in accessible files/shared folders
         query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
         res = service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)',
-            supportsAllDrives=True,
-            includeItemsFromAllDrives=True
+            fields='files(id, name)'
         ).execute()
         folders = res.get('files', [])
         if folders:
@@ -311,18 +331,16 @@ def upload_to_google_drive(file_path: str, sa_json_str: str, folder_name: str = 
             }
             folder = service.files().create(
                 body=folder_metadata,
-                fields='id',
-                supportsAllDrives=True
+                fields='id'
             ).execute()
-    print(f"[*] Uploading to Google Drive target folder ID: {folder_id}")
-    if not folder_id:
-        raise ValueError("Could not find or resolve Google Drive folder. Please ensure GDRIVE_FOLDER_ID secret is set!")
+            folder_id = folder.get('id')
 
-    # Upload file directly into the shared folder
+    print(f"[*] Uploading to Google Drive folder: {folder_name} (ID: {folder_id})")
+
     file_name = os.path.basename(file_path)
     file_metadata = {
         'name': file_name,
-        'parents': [folder_id]
+        'parents': [folder_id] if folder_id else []
     }
     media = MediaFileUpload(
         file_path,
@@ -332,20 +350,15 @@ def upload_to_google_drive(file_path: str, sa_json_str: str, folder_name: str = 
     uploaded = service.files().create(
         body=file_metadata,
         media_body=media,
-        fields='id, webViewLink',
-        supportsAllDrives=True
+        fields='id, webViewLink'
     ).execute()
 
     return uploaded.get('webViewLink', f"https://drive.google.com/file/d/{uploaded.get('id')}/view")
 
 def main():
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
-    gdrive_sa_json = os.environ.get("GDRIVE_SERVICE_ACCOUNT_JSON")
-
     if not gemini_api_key:
         raise ValueError("Missing GEMINI_API_KEY environment variable")
-    if not gdrive_sa_json:
-        raise ValueError("Missing GDRIVE_SERVICE_ACCOUNT_JSON environment variable")
 
     print("[*] 1. Gathering latest 24h news from Pakistan sources...")
     articles = fetch_recent_feed_items(hours_window=24)
@@ -362,7 +375,7 @@ def main():
     create_docx_report(structured_data, output_docx_path)
 
     print("[*] 4. Uploading to Google Drive ('Daily News' folder)...")
-    drive_link = upload_to_google_drive(output_docx_path, gdrive_sa_json, folder_name="Daily News")
+    drive_link = upload_to_google_drive(output_docx_path, folder_name="Daily News")
     print(f"[SUCCESS] Report successfully generated and uploaded!")
     print(f"Google Drive Link: {drive_link}")
 
