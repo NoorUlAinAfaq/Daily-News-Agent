@@ -1,10 +1,7 @@
 name: Daily Pakistan News Coverage Agent
 
 on:
-  schedule:
-    # 7:30 AM PKT (UTC+5) is 02:30 UTC
-    - cron: '30 2 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub UI anytime
+  workflow_dispatch: # Triggered externally via cron-job.org at 7:30 AM PKT daily
 
 jobs:
   run-daily-agent:
