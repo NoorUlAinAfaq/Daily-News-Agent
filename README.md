@@ -5,7 +5,7 @@ An autonomous agent that compiles daily morning Pakistan equity research into a 
 ---
 
 ## 📋 Features & Specifications
-- **Runs Headlessly in Cloud:** Runs on GitHub Actions on a cron schedule (`02:30 UTC = 07:30 AM PKT`).
+- **Runs Headlessly in Cloud:** Runs on GitHub Actions on a cron schedule (`07:30 AM PKT`).
 - **Targeted Sources:** Scrapes and curates news from:
   - *Business Recorder* (`brecorder.com`)
   - *Dawn Business* (`dawn.com/business`)
