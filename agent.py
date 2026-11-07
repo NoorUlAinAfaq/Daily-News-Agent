@@ -281,80 +281,59 @@ def create_docx_report(data: Dict[str, Any], output_path: str):
     doc.save(output_path)
     return output_path
 
-def upload_to_google_drive(file_path: str, folder_name: str = "Daily News") -> str:
-    """Uploads file to Google Drive using personal OAuth2 Refresh Token (or Service Account fallback)."""
-    refresh_token = os.environ.get("GDRIVE_REFRESH_TOKEN")
-    client_id = os.environ.get("GDRIVE_CLIENT_ID")
-    client_secret = os.environ.get("GDRIVE_CLIENT_SECRET")
-    sa_json_str = os.environ.get("GDRIVE_SERVICE_ACCOUNT_JSON")
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
 
-    if refresh_token and client_id and client_secret:
-        print("[*] Authenticating to Google Drive via User OAuth2 Refresh Token...")
-        from google.oauth2.credentials import Credentials
-        from google.auth.transport.requests import Request
-        creds = Credentials(
-            None,
-            refresh_token=refresh_token,
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=client_id,
-            client_secret=client_secret,
-            scopes=["https://www.googleapis.com/auth/drive"]
-        )
-        creds.refresh(Request())
-    elif sa_json_str:
-        print("[*] Authenticating to Google Drive via Service Account...")
-        sa_info = json.loads(sa_json_str)
-        creds = service_account.Credentials.from_service_account_info(
-            sa_info,
-            scopes=["https://www.googleapis.com/auth/drive"]
-        )
-    else:
-        raise ValueError("Missing Google Drive credentials! Provide GDRIVE_REFRESH_TOKEN, GDRIVE_CLIENT_ID, and GDRIVE_CLIENT_SECRET.")
-
-    service = build("drive", "v3", credentials=creds)
-
-    folder_id = os.environ.get("GDRIVE_FOLDER_ID")
+def send_email_report(file_path: str, recipient_emails: List[str], sender_email: str, sender_password: str):
+    """Sends the compiled Word document via Gmail SMTP directly to recipients."""
+    today_formatted = datetime.datetime.now().strftime("%B %d, %Y")
+    subject = f"Daily News Coverage: Pakistan Equity Intelligence - {today_formatted}"
     
-    if not folder_id:
-        query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-        res = service.files().list(
-            q=query,
-            spaces='drive',
-            fields='files(id, name)'
-        ).execute()
-        folders = res.get('files', [])
-        if folders:
-            folder_id = folders[0]['id']
-        else:
-            folder_metadata = {
-                'name': folder_name,
-                'mimeType': 'application/vnd.google-apps.folder'
-            }
-            folder = service.files().create(
-                body=folder_metadata,
-                fields='id'
-            ).execute()
-            folder_id = folder.get('id')
+    msg = MIMEMultipart()
+    msg['From'] = f"Pakistan Equity Intelligence <{sender_email}>"
+    msg['To'] = ", ".join(recipient_emails)
+    msg['Subject'] = subject
 
-    print(f"[*] Uploading to Google Drive folder: {folder_name} (ID: {folder_id})")
+    body_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #1a202c; line-height: 1.6;">
+        <div style="background-color: #0A192F; padding: 20px; border-radius: 8px 8px 0 0; color: #ffffff;">
+          <h2 style="margin: 0; color: #2EE697; letter-spacing: 1px;">THE DAILY NEWS COVERAGE</h2>
+          <p style="margin: 5px 0 0 0; color: #cbd5e1; font-size: 14px;">Pakistan Equity Market Intelligence Briefing • {today_formatted}</p>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: #ffffff;">
+          <p>Good morning,</p>
+          <p>Please find attached today's research briefing covering macroeconomics, monetary policy updates, and assigned PSX equity sectors (Pharmaceuticals, Automobiles, Sugar, Tech, Food, and Modarabas) from the past 24 hours.</p>
+          <div style="background: #f8fafc; border-left: 4px solid #00A86B; padding: 12px 16px; margin: 18px 0; border-radius: 4px;">
+            <p style="margin: 0; font-weight: bold; color: #0F172A;">Attached Document:</p>
+            <p style="margin: 4px 0 0 0; color: #475569;">📄 {os.path.basename(file_path)}</p>
+          </div>
+          <p style="font-size: 13px; color: #64748b; margin-top: 25px;">Curated autonomously before market open via Pakistan Equity Intelligence Agent.</p>
+        </div>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(body_html, 'html'))
 
-    file_name = os.path.basename(file_path)
-    file_metadata = {
-        'name': file_name,
-        'parents': [folder_id] if folder_id else []
-    }
-    media = MediaFileUpload(
-        file_path,
-        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        resumable=True
+    # Attach the Word file
+    with open(file_path, "rb") as attachment:
+        part = MIMEBase("application", "vnd.openxmlformats-officedocument.wordprocessingml.document")
+        part.set_payload(attachment.read())
+    encoders.encode_base64(part)
+    part.add_header(
+        "Content-Disposition",
+        f"attachment; filename= {os.path.basename(file_path)}",
     )
-    uploaded = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id, webViewLink'
-    ).execute()
+    msg.attach(part)
 
-    return uploaded.get('webViewLink', f"https://drive.google.com/file/d/{uploaded.get('id')}/view")
+    print(f"[*] Sending email to: {', '.join(recipient_emails)}...")
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, recipient_emails, msg.as_string())
+    print("[+] Email sent successfully!")
 
 def main():
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
@@ -375,10 +354,17 @@ def main():
     print(f"[*] 3. Compiling Word Document: {file_name}...")
     create_docx_report(structured_data, output_docx_path)
 
-    print("[*] 4. Uploading to Google Drive ('Daily News' folder)...")
-    drive_link = upload_to_google_drive(output_docx_path, folder_name="Daily News")
-    print(f"[SUCCESS] Report successfully generated and uploaded!")
-    print(f"Google Drive Link: {drive_link}")
+    print("[*] 4. Delivering Report via Email...")
+    sender_email = os.environ.get("SENDER_EMAIL")
+    sender_password = os.environ.get("SENDER_APP_PASSWORD")
+    recipients_str = os.environ.get("RECIPIENT_EMAILS", "")
+
+    if sender_email and sender_password and recipients_str:
+        recipient_list = [e.strip() for e in recipients_str.split(",") if e.strip()]
+        send_email_report(output_docx_path, recipient_list, sender_email, sender_password)
+        print(f"[SUCCESS] Report successfully generated and emailed to {len(recipient_list)} recipients!")
+    else:
+        print("[!] Email credentials not set. Set SENDER_EMAIL, SENDER_APP_PASSWORD, and RECIPIENT_EMAILS.")
 
 if __name__ == "__main__":
     main()
