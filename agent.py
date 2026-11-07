@@ -111,9 +111,10 @@ Collected Articles Raw List:
     try:
         remote_models = [m.name.replace("models/", "") for m in client.models.list() if "generateContent" in (getattr(m, "supported_generation_methods", []) or getattr(m, "supported_actions", []))]
         if remote_models:
-            # prioritize flash models first
-            flash_models = [m for m in remote_models if "flash" in m]
-            other_models = [m for m in remote_models if "flash" not in m]
+            # Exclude non-text modalities (image generation, tts audio)
+            text_models = [m for m in remote_models if not any(x in m for x in ["image", "tts", "embedding"])]
+            flash_models = [m for m in text_models if "flash" in m]
+            other_models = [m for m in text_models if "flash" not in m]
             available_models = flash_models + other_models
             print(f"[*] Available remote models: {available_models[:6]}")
     except Exception as e:

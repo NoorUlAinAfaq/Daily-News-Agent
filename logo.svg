@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06121E"/>
+      <stop offset="50%" stop-color="#0A1D30"/>
+      <stop offset="100%" stop-color="#040B13"/>
+    </linearGradient>
+
+    <!-- Emerald Growth Gradient -->
+    <linearGradient id="emeraldGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#00693E"/>
+      <stop offset="60%" stop-color="#00A86B"/>
+      <stop offset="100%" stop-color="#2EE697"/>
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCE082"/>
+      <stop offset="50%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#AA7C11"/>
+    </linearGradient>
+
+    <!-- Subtle Card Glass Shadow -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="25" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded canvas -->
+  <rect width="800" height="800" rx="160" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle circular grid line -->
+  <circle cx="400" cy="350" r="230" fill="none" stroke="#163852" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.6"/>
+  <circle cx="400" cy="350" r="170" fill="none" stroke="#1A4A6D" stroke-width="1" opacity="0.4"/>
+
+  <!-- Logo Icon Container (Centered around cx:400, cy:340) -->
+  <g filter="url(#softShadow)">
+    
+    <!-- Editorial / Newspaper Base Tablet -->
+    <rect x="250" y="210" width="300" height="260" rx="24" fill="#0E283D" stroke="#1C4B6E" stroke-width="2.5"/>
+    
+    <!-- Newspaper Masthead line -->
+    <rect x="280" y="240" width="130" height="10" rx="5" fill="#3D7A9E" opacity="0.8"/>
+    <circle cx="425" cy="245" r="5" fill="#3D7A9E" opacity="0.8"/>
+    
+    <!-- Text column indicator lines -->
+    <rect x="280" y="265" width="105" height="5" rx="2.5" fill="#205072"/>
+    <rect x="280" y="278" width="90" height="5" rx="2.5" fill="#205072"/>
+    <rect x="280" y="291" width="100" height="5" rx="2.5" fill="#205072"/>
+
+    <!-- Upward Financial Growth Bars (Merging news into market data) -->
+    <!-- Bar 1 -->
+    <rect x="345" y="360" width="22" height="70" rx="8" fill="#154B6D"/>
+    <!-- Bar 2 -->
+    <rect x="377" y="325" width="22" height="105" rx="8" fill="url(#emeraldGrad)"/>
+    <!-- Bar 3 -->
+    <rect x="409" y="290" width="22" height="140" rx="8" fill="url(#emeraldGrad)"/>
+    <!-- Bar 4 (Peak) -->
+    <rect x="441" y="245" width="22" height="185" rx="8" fill="url(#goldGrad)"/>
+
+    <!-- Dynamic Candlestick Trend Line Piercing Out -->
+    <path d="M 330 380 L 377 330 L 420 305 L 495 205" fill="none" stroke="#2EE697" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Bullish Trend Arrow Head / Star at peak -->
+    <polygon points="495,190 508,214 485,210" fill="#2EE697"/>
+    
+    <!-- Spark / Insight Star (Symbolizing intelligence & Pakistan motif) -->
+    <circle cx="510" cy="195" r="3" fill="#FFFFFF"/>
+    
+    <!-- Distinctive Golden Crescent/Ring Arc (Symbolizing Pakistan & global reach) -->
+    <path d="M 460 175 A 190 190 0 0 1 575 350" fill="none" stroke="url(#goldGrad)" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
+  </g>
+
+  <!-- Typography: App Name -->
+  <!-- Primary Title -->
+  <text x="400" y="555" font-family="'Cinzel', 'Trajan Pro', 'Times New Roman', Georgia, serif" font-size="36" font-weight="700" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">
+    DAILY NEWS COVERAGE
+  </text>
+
+  <!-- Subtitle / Category Badge -->
+  <text x="400" y="598" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#2EE697" text-anchor="middle" letter-spacing="7">
+    PAKISTAN EQUITY INTELLIGENCE
+  </text>
+
+  <!-- Gold Divider Accent -->
+  <line x1="330" y1="625" x2="470" y2="625" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Footer Tagline -->
+  <text x="400" y="655" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="400" fill="#718B9E" text-anchor="middle" letter-spacing="2">
+    MACRO &amp; SECTOR RESEARCH BRIEFING
+  </text>
+</svg>
